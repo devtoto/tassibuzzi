@@ -1,7 +1,6 @@
-version: '3.8'
-
 services:
   frontend:
+    container_name: frontend
     build:
       context: .
       target: frontend
@@ -14,21 +13,23 @@ services:
     restart: unless-stopped
 
   backend:
+    container_name: backend
     build:
       context: .
+    
       target: backend
     ports:
-      - "3001:3001"
+      - "5000:5000"
     env_file:
       - .env
     environment:
-      - NODE_ENV=production
-      - PORT=3001
+      - FLASK_ENV=production
+      - DATABASE_URL=sqlite:////data/db.sqlite
     networks:
       - buzzer-network
     restart: unless-stopped
     volumes:
-      - backend-logs:/app/backend/logs
+      - sqlite-data:/data
 
 networks:
   buzzer-network:
@@ -36,3 +37,4 @@ networks:
 
 volumes:
   backend-logs:
+  sqlite-data:

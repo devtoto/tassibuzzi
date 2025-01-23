@@ -1,17 +1,16 @@
-# Base node image for both services
-FROM node:18-alpine as base
-RUN apk add --no-cache tini
+# Base python image
+FROM python:3.11-alpine as base
+RUN apk add --no-cache bash
 
 # Backend build stage
 FROM base as backend-builder
 WORKDIR /app/backend
-COPY backend/package*.json ./
-RUN npm ci
-COPY backend ./
-RUN npm run build
+COPY backend/requirements.txt ./
+RUN pip install --user -r requirements.txt
+COPY backend .
 
-# Frontend build stage
-FROM base as frontend-builder
+# Frontend build stage remains unchanged
+FROM node:18-alpine as frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
@@ -21,14 +20,13 @@ RUN npm run build
 # Backend production stage
 FROM base as backend
 WORKDIR /app/backend
-COPY --from=backend-builder /app/backend/dist ./dist
-COPY --from=backend-builder /app/backend/package*.json ./
-RUN npm ci --only=production
-EXPOSE 3001
+COPY --from=backend-builder /root/.local /root/.local
+COPY --from=backend-builder /app/backend .
+ENV PATH=/root/.local/bin:$PATH
+EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s \
-    CMD wget --quiet --tries=1 --spider http://localhost:3001/health || exit 1
-ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/server.js"]
+    CMD wget --quiet --tries=1 --spider http://localhost:5000/health || exit 1
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "server:app"]
 
 # Frontend production stage
 FROM nginx:alpine as frontend

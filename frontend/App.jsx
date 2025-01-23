@@ -25,8 +25,8 @@ export default function BuzzerApp() {
     
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/tweets/${username}`);
-      if (!response.ok) throw new Error('Failed to fetch tweets');
+      const response = await fetch(`http://localhost:5000/api/users`);
+      if (!response.ok) throw new Error('Failed to fetch users');
       
       const data = await response.json();
       setTweets(data);
