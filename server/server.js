@@ -3,11 +3,12 @@ const app = express();
 app.use(express.static('public'));
 
 const axios = require('axios');
+const cron = require('node-cron');
 
 // Cache für Tweets
 let tweetCache = [];
 let lastFetchTime = 0;
-const CACHE_DURATION = 60 * 1000; // 1 Minute Cache-Dauer
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 Stunden Cache-Dauer
 const API_COOLDOWN = 15 * 1000;   // 15 Sekunden API-Cooldown
 
 const twitterAPI = axios.create({
@@ -18,17 +19,17 @@ const twitterAPI = axios.create({
 });
 
 // Fetch Tweets mit Cache
-async function fetchTweetsWithCache() {
+async function fetchTweetsWithCache(forceRefresh = false) {
   const now = Date.now();
   
   // Prüfe Cache-Gültigkeit
-  if (tweetCache.length > 0 && now - lastFetchTime < CACHE_DURATION) {
+  if (!forceRefresh && tweetCache.length > 0 && now - lastFetchTime < CACHE_DURATION) {
     console.log('📦 Verwende gecachte Tweets');
     return tweetCache;
   }
 
   // Prüfe API-Cooldown
-  if (now - lastFetchTime < API_COOLDOWN) {
+  if (!forceRefresh && now - lastFetchTime < API_COOLDOWN) {
     console.log('⏳ API-Cooldown aktiv, verwende Cache');
     return tweetCache.length > 0 ? tweetCache : null;
   }
@@ -52,6 +53,12 @@ async function fetchTweetsWithCache() {
     return tweetCache.length > 0 ? tweetCache : null;
   }
 }
+
+// Schedule cache refresh at midnight
+cron.schedule('0 0 * * *', async () => {
+  console.log('🔄 Automatische Cache-Aktualisierung um Mitternacht');
+  await fetchTweetsWithCache(true); // Force refresh
+});
 
 app.get('/api/tweets', async (req, res) => {
   try {
