@@ -9,7 +9,6 @@ const cron = require('node-cron');
 let tweetCache = [];
 let lastFetchTime = 0;
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 Stunden Cache-Dauer
-const API_COOLDOWN = 15 * 1000;   // 15 Sekunden API-Cooldown
 
 const twitterAPI = axios.create({
   baseURL: 'https://api.twitter.com/2',
@@ -28,18 +27,12 @@ async function fetchTweetsWithCache(forceRefresh = false) {
     return tweetCache;
   }
 
-  // Prüfe API-Cooldown
-  if (!forceRefresh && now - lastFetchTime < API_COOLDOWN) {
-    console.log('⏳ API-Cooldown aktiv, verwende Cache');
-    return tweetCache.length > 0 ? tweetCache : null;
-  }
-
   try {
     // Hole neue Tweets
     console.log('🔄 Hole neue Tweets von Twitter API');
     const response = await twitterAPI.get('/tweets/search/recent', {
       params: {
-        query: `from:${process.env.TWITTER_USERNAME}`,
+        query: `from:${process.env.TWITTER_USERNAME} -is:retweet`,
         'tweet.fields': 'created_at',
         max_results: 50
       }
@@ -72,10 +65,8 @@ app.get('/api/tweets', async (req, res) => {
       });
     }
 
-    const randomTweet = tweets[Math.floor(Math.random() * tweets.length)];
-    console.log(`🎲 Zufälliger Tweet ausgewählt aus ${tweets.length} Tweets`);
-    
-    res.json({ data: randomTweet });
+    console.log(`📤 Sende ${tweets.length} Tweets zurück`);
+    res.json({ data: tweets });
   } catch (error) {
     console.error('🚨 Server Fehler:', error.message);
     res.status(500).json({

@@ -5,31 +5,9 @@ import './App.css';
 function App() {
   const [tweet, setTweet] = useState('Drück den Buzzer für einen Tweet!');
   const [isBuzzing, setIsBuzzing] = useState(false);
-  const [isCooldown, setIsCooldown] = useState(false);
-  const [cooldownTime, setCooldownTime] = useState(0);
-
   const fetchTweet = async () => {
-    if (isCooldown) {
-      console.log(`⏳ Buzzer blockiert - Cooldown aktiv (${cooldownTime}s)`);
-      return;
-    }
-    
     console.log('🎮 Buzzer gedrückt | Animation gestartet');
     setIsBuzzing(true);
-    setIsCooldown(true);
-    setCooldownTime(5);
-    
-    // Starte Cooldown-Timer
-    const timer = setInterval(() => {
-      setCooldownTime((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setIsCooldown(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
 
     try {
       console.log('🌐 Starte API-Anfrage...');
@@ -38,7 +16,8 @@ function App() {
         status: response.status,
         tweet: response.data.data.text.substring(0, 50) + '...'
       });
-      setTweet(response.data.data.text);
+      const tweets = response.data.data;
+      setTweet(tweets.map(tweet => tweet.text).join('\n\n'));
     } catch (error) {
       console.error('❌ API-Fehler:', {
         status: error.response?.status,
@@ -57,11 +36,10 @@ function App() {
         {tweet}
       </div>
       <button 
-        className={`buzzer-button ${isBuzzing ? 'active' : ''} ${isCooldown ? 'cooldown' : ''}`}
+        className={`buzzer-button ${isBuzzing ? 'active' : ''}`}
         onClick={fetchTweet}
-        disabled={isCooldown}
       >
-        {isCooldown ? `COOLDOWN (${cooldownTime}s)` : 'BUZZER DRÜCKEN!'}
+        ALLE TWEETS LADEN
       </button>
     </div>
   );
